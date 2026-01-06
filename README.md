@@ -35,7 +35,7 @@ A modern, real-time chat application built with React and WebSocket technology. 
 
 - Node.js 18+ 
 - npm or yarn
-- [ChatNexus Backend](https://github.com/krushna06/ChatNexus) running on port 8080
+- [ChatNexus Backend](https://github.com/KrushnaHarde/ChatNexus-backend) running on port 8080
 
 ### Setup
 
