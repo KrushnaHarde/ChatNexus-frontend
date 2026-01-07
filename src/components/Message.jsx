@@ -1,8 +1,12 @@
-import { useState } from 'react'
-import { Check, CheckCheck, X, Clock } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Check, CheckCheck, X, Clock, Play, Pause, Volume2 } from 'lucide-react'
 
 export default function Message({ message, isSender }) {
   const [lightboxOpen, setLightboxOpen] = useState(false)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [currentTime, setCurrentTime] = useState(0)
+  const [duration, setDuration] = useState(0)
+  const audioRef = useRef(null)
 
   const formatTime = (dateStr) => {
     if (!dateStr) return ''
@@ -60,14 +64,16 @@ export default function Message({ message, isSender }) {
     if (messageType === 'IMAGE' && url) {
       return (
         <div className="space-y-2">
-          <img
-            src={url}
-            alt={fileName || 'Shared image'}
-            className="max-w-[280px] max-h-[300px] rounded-xl cursor-pointer hover:opacity-90 transition-opacity object-cover"
-            onClick={() => setLightboxOpen(true)}
-            loading="lazy"
-          />
-          {content && <p className="text-sm">{content}</p>}
+          <div className="relative w-full max-w-[280px] sm:max-w-[320px] overflow-hidden rounded-xl">
+            <img
+              src={url}
+              alt={fileName || 'Shared image'}
+              className="w-full h-auto max-h-[300px] sm:max-h-[350px] rounded-xl cursor-pointer hover:opacity-90 transition-opacity object-contain bg-dark-800/50"
+              onClick={() => setLightboxOpen(true)}
+              loading="lazy"
+            />
+          </div>
+          {content && <p className="text-sm mt-2">{content}</p>}
         </div>
       )
     }
@@ -75,28 +81,138 @@ export default function Message({ message, isSender }) {
     if (messageType === 'VIDEO' && url) {
       return (
         <div className="space-y-2">
-          <video
-            src={url}
-            controls
-            preload="metadata"
-            className="max-w-[280px] max-h-[300px] rounded-xl"
-          />
-          {content && <p className="text-sm">{content}</p>}
+          <div className="relative w-full max-w-[280px] sm:max-w-[320px] overflow-hidden rounded-xl bg-dark-800/50">
+            <video
+              src={url}
+              controls
+              preload="metadata"
+              className="w-full h-auto max-h-[300px] sm:max-h-[350px] rounded-xl"
+            />
+          </div>
+          {content && <p className="text-sm mt-2">{content}</p>}
         </div>
       )
     }
 
     if (messageType === 'AUDIO' && url) {
+      const formatAudioTime = (time) => {
+        if (!time || isNaN(time)) return '0:00'
+        const mins = Math.floor(time / 60)
+        const secs = Math.floor(time % 60)
+        return `${mins}:${secs.toString().padStart(2, '0')}`
+      }
+
+      const togglePlay = () => {
+        if (audioRef.current) {
+          if (isPlaying) {
+            audioRef.current.pause()
+          } else {
+            audioRef.current.play()
+          }
+          setIsPlaying(!isPlaying)
+        }
+      }
+
+      const handleTimeUpdate = () => {
+        if (audioRef.current) {
+          setCurrentTime(audioRef.current.currentTime)
+        }
+      }
+
+      const handleLoadedMetadata = () => {
+        if (audioRef.current) {
+          setDuration(audioRef.current.duration)
+        }
+      }
+
+      const handleSeek = (e) => {
+        const rect = e.currentTarget.getBoundingClientRect()
+        const x = e.clientX - rect.left
+        const percentage = x / rect.width
+        if (audioRef.current) {
+          audioRef.current.currentTime = percentage * duration
+        }
+      }
+
+      const handleEnded = () => {
+        setIsPlaying(false)
+        setCurrentTime(0)
+      }
+
+      const progress = duration ? (currentTime / duration) * 100 : 0
+
       return (
-        <div className="space-y-2">
+        <div className="space-y-2 w-full min-w-[200px] max-w-[280px] sm:min-w-[260px] sm:max-w-[320px] md:min-w-[280px] md:max-w-[360px]">
           {fileName && (
-            <div className="flex items-center gap-2 text-xs opacity-70">
-              <span>🎵</span>
-              <span className="truncate max-w-[200px]">{fileName}</span>
+            <div className="flex items-center gap-2 text-xs opacity-80 mb-1">
+              <span className="text-base">🎵</span>
+              <span className="truncate max-w-[180px] sm:max-w-[240px] font-medium">{fileName}</span>
             </div>
           )}
-          <audio src={url} controls preload="metadata" className="w-[250px]" />
-          {content && <p className="text-sm">{content}</p>}
+          
+          {/* Custom Audio Player */}
+          <div className={`rounded-2xl p-3 ${
+            isSender 
+              ? 'bg-white/10 backdrop-blur-sm' 
+              : 'bg-primary-500/10 border border-primary-500/20'
+          }`}>
+            <audio
+              ref={audioRef}
+              src={url}
+              preload="metadata"
+              onTimeUpdate={handleTimeUpdate}
+              onLoadedMetadata={handleLoadedMetadata}
+              onEnded={handleEnded}
+              className="hidden"
+            />
+            
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Play/Pause Button */}
+              <button
+                onClick={togglePlay}
+                className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all duration-200 flex-shrink-0 ${
+                  isSender
+                    ? 'bg-white/20 hover:bg-white/30 text-white'
+                    : 'bg-primary-500 hover:bg-primary-600 text-white'
+                }`}
+              >
+                {isPlaying ? (
+                  <Pause className="w-4 h-4 sm:w-5 sm:h-5" />
+                ) : (
+                  <Play className="w-4 h-4 sm:w-5 sm:h-5 ml-0.5" />
+                )}
+              </button>
+              
+              {/* Progress Section */}
+              <div className="flex-1 min-w-0">
+                {/* Progress Bar */}
+                <div
+                  className="h-2 bg-dark-600/50 rounded-full cursor-pointer overflow-hidden mb-1.5"
+                  onClick={handleSeek}
+                >
+                  <div
+                    className={`h-full rounded-full transition-all duration-100 ${
+                      isSender ? 'bg-white/70' : 'bg-primary-500'
+                    }`}
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+                
+                {/* Time Display */}
+                <div className="flex justify-between text-[11px] sm:text-xs opacity-70">
+                  <span>{formatAudioTime(currentTime)}</span>
+                  <span>{formatAudioTime(duration)}</span>
+                </div>
+              </div>
+              
+              {/* Volume Icon - hidden on very small screens */}
+              <Volume2 className={`w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 opacity-60 hidden sm:block ${
+                isSender ? 'text-white' : 'text-primary-400'
+              }`} />
+            </div>
+          </div>
+          
+          {content && <p className="text-sm mt-2">{content}</p>}
         </div>
       )
     }
@@ -104,13 +220,16 @@ export default function Message({ message, isSender }) {
     return <p className="text-sm md:text-base leading-relaxed break-words">{content}</p>
   }
 
+  // Check if message contains media
+  const hasMedia = message.messageType === 'IMAGE' || message.messageType === 'VIDEO' || message.messageType === 'AUDIO'
+
   return (
     <>
-      <div className={`flex ${isSender ? 'justify-end' : 'justify-start'} animate-message-in`}>
-        <div className={`relative max-w-[75%] md:max-w-[70%] group ${isSender ? 'order-2' : ''}`}>
+      <div className={`flex ${isSender ? 'justify-end' : 'justify-start'} animate-message-in px-2 sm:px-0`}>
+        <div className={`relative ${hasMedia ? 'max-w-[85%] sm:max-w-[75%] md:max-w-[70%]' : 'max-w-[75%] md:max-w-[70%]'} group ${isSender ? 'order-2' : ''}`}>
           {/* Message Bubble */}
           <div
-            className={`px-4 py-2.5 rounded-2xl ${
+            className={`px-3 sm:px-4 py-2.5 rounded-2xl ${
               isSender
                 ? 'bg-gradient-to-r from-primary-500 to-secondary-500 text-white rounded-br-md'
                 : 'bg-dark-700/80 text-dark-100 border border-primary-500/20 rounded-bl-md'

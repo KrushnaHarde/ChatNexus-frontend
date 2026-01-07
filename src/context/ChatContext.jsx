@@ -23,6 +23,16 @@ export function ChatProvider({ children }) {
     selectedUserRef.current = selectedUser
   }, [selectedUser])
 
+  // Sync selectedUser status with contacts when contacts update
+  useEffect(() => {
+    if (selectedUser && contacts.length > 0) {
+      const updatedContact = contacts.find(c => c.username === selectedUser.username)
+      if (updatedContact && updatedContact.status !== selectedUser.status) {
+        setSelectedUser(prev => prev ? { ...prev, status: updatedContact.status } : null)
+      }
+    }
+  }, [contacts, selectedUser?.username])
+
   // Connect to WebSocket
   useEffect(() => {
     if (!user || !token) return
