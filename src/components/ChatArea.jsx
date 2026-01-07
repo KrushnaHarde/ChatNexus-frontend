@@ -2,9 +2,9 @@ import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useChat } from '../context/ChatContext'
 import Message from './Message'
-import { Send, Paperclip, X, MessageSquare, Loader } from 'lucide-react'
+import { Send, Paperclip, X, MessageSquare, Loader, ArrowLeft } from 'lucide-react'
 
-export default function ChatArea() {
+export default function ChatArea({ onBack }) {
   const { user } = useAuth()
   const { selectedUser, messages, sendMessage, sendMediaMessage } = useChat()
   const [messageText, setMessageText] = useState('')
@@ -73,15 +73,23 @@ export default function ChatArea() {
   return (
     <div className="flex-1 flex flex-col bg-dark-600/40 h-full min-h-0 overflow-hidden">
       {/* Chat Header */}
-      <div className="px-4 md:px-6 py-4 border-b border-primary-500/15 bg-dark-700/40 min-h-[70px] flex items-center flex-shrink-0">
-        <div className="flex items-center gap-3">
+      <div className="px-3 md:px-6 py-3 md:py-4 border-b border-primary-500/15 bg-dark-700/40 min-h-[60px] md:min-h-[70px] flex items-center flex-shrink-0">
+        <div className="flex items-center gap-2 md:gap-3 w-full">
+          {/* Back Button - Mobile only */}
+          <button
+            onClick={onBack}
+            className="md:hidden p-2 -ml-1 text-dark-200 hover:text-white hover:bg-dark-600 rounded-full transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          
           <img
             src={`https://ui-avatars.com/api/?name=${encodeURIComponent(selectedUser.fullName)}&background=667eea&color=fff&size=40`}
             alt={selectedUser.fullName}
-            className="w-10 h-10 rounded-full border-2 border-primary-500/40"
+            className="w-9 h-9 md:w-10 md:h-10 rounded-full border-2 border-primary-500/40"
           />
-          <div>
-            <h3 className="font-medium text-dark-100">{selectedUser.fullName}</h3>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-medium text-dark-100 text-sm md:text-base truncate">{selectedUser.fullName}</h3>
             <p className="text-xs text-dark-300 flex items-center gap-1">
               <span className={`w-2 h-2 rounded-full ${selectedUser.status === 'ONLINE' ? 'bg-green-500' : 'bg-gray-500'}`} />
               {selectedUser.status === 'ONLINE' ? 'Online' : 'Offline'}

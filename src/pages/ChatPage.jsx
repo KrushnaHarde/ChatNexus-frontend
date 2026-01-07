@@ -3,17 +3,27 @@ import { useAuth } from '../context/AuthContext'
 import { useChat } from '../context/ChatContext'
 import Sidebar from '../components/Sidebar'
 import ChatArea from '../components/ChatArea'
-import { Menu, X, MessageCircle } from 'lucide-react'
+import { MessageCircle } from 'lucide-react'
 
 export default function ChatPage() {
   const { user } = useAuth()
-  const { selectedUser } = useChat()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { selectedUser, selectUser } = useChat()
+  // On mobile, show chat area only when a user is selected
+  const [showMobileChat, setShowMobileChat] = useState(false)
+
+  const handleSelectUser = (user) => {
+    setShowMobileChat(true)
+  }
+
+  const handleBackToChats = () => {
+    selectUser(null)
+    setShowMobileChat(false)
+  }
 
   return (
-    <div className="h-screen flex flex-col items-center justify-center p-2 md:p-4 overflow-hidden">
-      {/* Compact Branding Header */}
-      <div className="w-full max-w-5xl mb-2 flex items-center justify-center gap-2">
+    <div className="h-screen flex flex-col items-center justify-center p-2 md:p-4 overflow-hidden fixed inset-0">
+      {/* Compact Branding Header - Hidden on mobile when in chat */}
+      <div className={`w-full max-w-5xl mb-2 flex items-center justify-center gap-2 ${showMobileChat && selectedUser ? 'hidden md:flex' : 'flex'}`}>
         <div className="flex items-center gap-1">
           <MessageCircle className="w-6 h-6 text-primary-500" />
           <MessageCircle className="w-4 h-4 text-secondary-500 -ml-2 mt-1" />
@@ -25,36 +35,22 @@ export default function ChatPage() {
         <span className="text-dark-500 text-xs hidden md:inline ml-1">by <span className="text-primary-400">Krushna</span></span>
       </div>
 
-      <div className="w-full max-w-5xl h-[calc(100vh-4rem)] md:h-[700px] bg-dark-600/80 backdrop-blur-xl border border-primary-500/20 rounded-2xl shadow-2xl overflow-hidden flex">
-        {/* Mobile Menu Button */}
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="md:hidden fixed top-4 left-4 z-50 p-2 bg-dark-600 rounded-lg text-dark-100"
-        >
-          {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
-
-        {/* Sidebar - Hidden on mobile unless open */}
+      <div className={`w-full max-w-5xl bg-dark-600/80 backdrop-blur-xl border border-primary-500/20 rounded-2xl shadow-2xl overflow-hidden flex ${showMobileChat && selectedUser ? 'h-screen md:h-[700px] rounded-none md:rounded-2xl' : 'h-[calc(100vh-4rem)] md:h-[700px]'}`}>
+        
+        {/* Sidebar - Full width on mobile, fixed width on desktop */}
         <div className={`
-          fixed md:relative inset-y-0 left-0 z-40
-          transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0
-          transition-transform duration-300 ease-in-out
-          w-72 md:w-72 flex-shrink-0 h-full
+          ${showMobileChat && selectedUser ? 'hidden md:block' : 'block'}
+          w-full md:w-72 flex-shrink-0 h-full
         `}>
-          <Sidebar onSelectUser={() => setSidebarOpen(false)} />
+          <Sidebar onSelectUser={handleSelectUser} />
         </div>
 
-        {/* Overlay for mobile */}
-        {sidebarOpen && (
-          <div
-            className="md:hidden fixed inset-0 bg-black/50 z-30"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
-
-        {/* Chat Area */}
-        <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-          <ChatArea />
+        {/* Chat Area - Full width on mobile when selected, flex-1 on desktop */}
+        <div className={`
+          ${showMobileChat && selectedUser ? 'block' : 'hidden md:block'}
+          w-full md:w-auto flex-1 flex flex-col min-w-0 h-full overflow-hidden
+        `}>
+          <ChatArea onBack={handleBackToChats} />
         </div>
       </div>
     </div>
