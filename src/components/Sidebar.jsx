@@ -1,15 +1,18 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useChat } from '../context/ChatContext'
-import { MessageCircle, Search, LogOut, User, Image, Video, Music } from 'lucide-react'
+import { MessageCircle, Search, LogOut, User, Image, Video, Music, Users, Plus } from 'lucide-react'
+import CreateGroupModal from './CreateGroupModal'
 
 export default function Sidebar({ onSelectUser }) {
   const { user } = useAuth()
-  const { contacts, selectedUser, selectUser, searchUsers, disconnectUser } = useChat()
+  const { contacts, selectedUser, selectUser, groups, selectedGroup, selectGroup, searchUsers, disconnectUser } = useChat()
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [showResults, setShowResults] = useState(false)
   const [searchTimeout, setSearchTimeoutState] = useState(null)
+  const [activeTab, setActiveTab] = useState('chats') // 'chats' or 'groups'
+  const [showCreateGroup, setShowCreateGroup] = useState(false)
   const searchContainerRef = useRef(null)
 
   // Click outside to close search results
@@ -53,6 +56,11 @@ export default function Sidebar({ onSelectUser }) {
     selectUser(userToSelect)
     setSearchQuery('')
     setShowResults(false)
+    onSelectUser?.()
+  }
+
+  const handleSelectGroup = (groupToSelect) => {
+    selectGroup(groupToSelect)
     onSelectUser?.()
   }
 
@@ -144,11 +152,49 @@ export default function Sidebar({ onSelectUser }) {
   return (
     <div className="h-full bg-dark-700/60 border-r border-primary-500/15 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="p-4 md:p-5 border-b border-primary-500/15 min-h-[70px] flex items-center flex-shrink-0">
+      <div className="p-4 md:p-5 border-b border-primary-500/15 min-h-[70px] flex items-center justify-between flex-shrink-0">
         <h2 className="text-lg font-semibold text-dark-200 flex items-center gap-2">
           <MessageCircle className="w-5 h-5 text-primary-500" />
-          Chats
+          ChatNexus
         </h2>
+        <button
+          onClick={() => setShowCreateGroup(true)}
+          className="p-2 text-primary-500 hover:bg-primary-500/15 rounded-lg transition-colors"
+          title="Create Group"
+        >
+          <Plus className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="flex border-b border-primary-500/15 flex-shrink-0">
+        <button
+          onClick={() => setActiveTab('chats')}
+          className={`flex-1 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+            activeTab === 'chats'
+              ? 'text-primary-500 border-b-2 border-primary-500'
+              : 'text-dark-400 hover:text-dark-200'
+          }`}
+        >
+          <MessageCircle className="w-4 h-4" />
+          Chats
+        </button>
+        <button
+          onClick={() => setActiveTab('groups')}
+          className={`flex-1 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+            activeTab === 'groups'
+              ? 'text-primary-500 border-b-2 border-primary-500'
+              : 'text-dark-400 hover:text-dark-200'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          Groups
+          {groups.filter(g => g.unreadCount > 0).length > 0 && (
+            <span className="bg-gradient-to-r from-primary-500 to-secondary-500 text-white text-xs font-semibold px-1.5 rounded-full">
+              {groups.filter(g => g.unreadCount > 0).length}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* Search */}
@@ -160,7 +206,7 @@ export default function Sidebar({ onSelectUser }) {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onFocus={() => searchQuery.length >= 2 && setShowResults(true)}
-            placeholder="Search users..."
+            placeholder={activeTab === 'chats' ? "Search users..." : "Search groups..."}
             className="flex-1 bg-transparent text-dark-100 text-sm outline-none placeholder-dark-400"
           />
         </div>
@@ -196,55 +242,115 @@ export default function Sidebar({ onSelectUser }) {
         )}
       </div>
 
-      {/* Contacts List */}
+      {/* Contacts/Groups List */}
       <div className="flex-1 overflow-y-auto p-3 min-h-0">
-        {contacts.length === 0 ? (
-          <div className="text-center text-dark-300 text-sm py-8">
-            <p>No conversations yet</p>
-            <p className="text-xs mt-1">Search for users to start chatting</p>
-          </div>
-        ) : (
-          <ul className="space-y-2">
-            {contacts.map(contact => (
-              <li
-                key={contact.username}
-                onClick={() => handleSelectUser(contact)}
-                className={`flex items-center p-3 rounded-xl cursor-pointer transition-all
-                  ${selectedUser?.username === contact.username 
-                    ? 'bg-gradient-to-r from-primary-500/30 to-secondary-500/30 border border-primary-500/30' 
-                    : 'hover:bg-primary-500/10'}`}
-              >
-                <img
-                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(contact.fullName)}&background=667eea&color=fff&size=42`}
-                  alt={contact.fullName}
-                  className="w-10 h-10 rounded-full border-2 border-primary-500/40 mr-3 flex-shrink-0"
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-medium text-dark-100 text-sm truncate">{contact.fullName}</span>
-                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${contact.status === 'ONLINE' ? 'bg-green-500 shadow-lg shadow-green-500/50' : 'bg-gray-500'}`} />
+        {activeTab === 'chats' ? (
+          // Direct Messages Tab
+          contacts.length === 0 ? (
+            <div className="text-center text-dark-300 text-sm py-8">
+              <p>No conversations yet</p>
+              <p className="text-xs mt-1">Search for users to start chatting</p>
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {contacts.map(contact => (
+                <li
+                  key={contact.username}
+                  onClick={() => handleSelectUser(contact)}
+                  className={`flex items-center p-3 rounded-xl cursor-pointer transition-all
+                    ${selectedUser?.username === contact.username 
+                      ? 'bg-gradient-to-r from-primary-500/30 to-secondary-500/30 border border-primary-500/30' 
+                      : 'hover:bg-primary-500/10'}`}
+                >
+                  <img
+                    src={`https://ui-avatars.com/api/?name=${encodeURIComponent(contact.fullName)}&background=667eea&color=fff&size=42`}
+                    alt={contact.fullName}
+                    className="w-10 h-10 rounded-full border-2 border-primary-500/40 mr-3 flex-shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-medium text-dark-100 text-sm truncate">{contact.fullName}</span>
+                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${contact.status === 'ONLINE' ? 'bg-green-500 shadow-lg shadow-green-500/50' : 'bg-gray-500'}`} />
+                    </div>
+                    {(contact.lastMessage || contact.lastMessageType) && (
+                      <p className={`text-xs mt-0.5 flex items-center ${contact.unreadCount > 0 ? 'text-dark-200 font-medium' : 'text-dark-300'}`}>
+                        {formatLastMessage(contact)}
+                      </p>
+                    )}
                   </div>
-                  {(contact.lastMessage || contact.lastMessageType) && (
-                    <p className={`text-xs mt-0.5 flex items-center ${contact.unreadCount > 0 ? 'text-dark-200 font-medium' : 'text-dark-300'}`}>
-                      {formatLastMessage(contact)}
+                  <div className="flex flex-col items-end gap-1 ml-2">
+                    {contact.lastMessageTime && (
+                      <span className={`text-xs ${contact.unreadCount > 0 ? 'text-primary-500' : 'text-dark-400'}`}>
+                        {formatTime(contact.lastMessageTime)}
+                      </span>
+                    )}
+                    {contact.unreadCount > 0 && (
+                      <span className="bg-gradient-to-r from-primary-500 to-secondary-500 text-white text-xs font-semibold px-2 py-0.5 rounded-full">
+                        {contact.unreadCount}
+                      </span>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )
+        ) : (
+          // Groups Tab
+          groups.length === 0 ? (
+            <div className="text-center text-dark-300 text-sm py-8">
+              <Users className="w-10 h-10 mx-auto mb-3 opacity-50" />
+              <p>No groups yet</p>
+              <p className="text-xs mt-1">Create a group to start chatting</p>
+              <button
+                onClick={() => setShowCreateGroup(true)}
+                className="mt-3 px-4 py-2 bg-primary-500/20 text-primary-400 rounded-lg hover:bg-primary-500/30 transition-colors text-sm"
+              >
+                Create Group
+              </button>
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {groups.map(group => (
+                <li
+                  key={group.id}
+                  onClick={() => handleSelectGroup(group)}
+                  className={`flex items-center p-3 rounded-xl cursor-pointer transition-all
+                    ${selectedGroup?.id === group.id 
+                      ? 'bg-gradient-to-r from-primary-500/30 to-secondary-500/30 border border-primary-500/30' 
+                      : 'hover:bg-primary-500/10'}`}
+                >
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-r from-primary-500 to-secondary-500 flex items-center justify-center mr-3 flex-shrink-0">
+                    <Users className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className={`font-medium text-sm truncate ${group.unreadCount > 0 ? 'text-white' : 'text-dark-100'}`}>{group.name}</span>
+                    </div>
+                    <p className="text-xs text-dark-400 mt-0.5">
+                      {group.memberCount || group.memberIds?.length || 0} members
                     </p>
-                  )}
-                </div>
-                <div className="flex flex-col items-end gap-1 ml-2">
-                  {contact.lastMessageTime && (
-                    <span className={`text-xs ${contact.unreadCount > 0 ? 'text-primary-500' : 'text-dark-400'}`}>
-                      {formatTime(contact.lastMessageTime)}
-                    </span>
-                  )}
-                  {contact.unreadCount > 0 && (
-                    <span className="bg-gradient-to-r from-primary-500 to-secondary-500 text-white text-xs font-semibold px-2 py-0.5 rounded-full">
-                      {contact.unreadCount}
-                    </span>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
+                    {group.lastMessage && (
+                      <p className={`text-xs truncate mt-0.5 ${group.unreadCount > 0 ? 'text-dark-200 font-medium' : 'text-dark-300'}`}>
+                        <span className="text-primary-400">{group.lastMessageSender}:</span> {group.lastMessage}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-end gap-1 ml-2">
+                    {group.lastMessageTime && (
+                      <span className={`text-xs ${group.unreadCount > 0 ? 'text-primary-500' : 'text-dark-400'}`}>
+                        {formatTime(group.lastMessageTime)}
+                      </span>
+                    )}
+                    {group.unreadCount > 0 && (
+                      <span className="bg-gradient-to-r from-primary-500 to-secondary-500 text-white text-xs font-semibold px-2 py-0.5 rounded-full">
+                        {group.unreadCount}
+                      </span>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )
         )}
       </div>
 
@@ -264,6 +370,12 @@ export default function Sidebar({ onSelectUser }) {
           <LogOut className="w-5 h-5" />
         </button>
       </div>
+
+      {/* Create Group Modal */}
+      <CreateGroupModal 
+        isOpen={showCreateGroup} 
+        onClose={() => setShowCreateGroup(false)} 
+      />
     </div>
   )
 }

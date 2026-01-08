@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { Check, CheckCheck, X, Clock, Play, Pause, Volume2 } from 'lucide-react'
 
-export default function Message({ message, isSender }) {
+export default function Message({ message, isSender, isGroupMessage = false }) {
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -217,7 +217,7 @@ export default function Message({ message, isSender }) {
       )
     }
 
-    return <p className="text-sm md:text-base leading-relaxed break-words">{content}</p>
+    return <p className="text-sm md:text-base leading-relaxed whitespace-pre-wrap break-words">{content}</p>
   }
 
   // Check if message contains media
@@ -226,10 +226,10 @@ export default function Message({ message, isSender }) {
   return (
     <>
       <div className={`flex ${isSender ? 'justify-end' : 'justify-start'} animate-message-in px-2 sm:px-0`}>
-        <div className={`relative ${hasMedia ? 'max-w-[85%] sm:max-w-[75%] md:max-w-[70%]' : 'max-w-[75%] md:max-w-[70%]'} group ${isSender ? 'order-2' : ''}`}>
+        <div className={`relative ${hasMedia ? 'max-w-[85%] sm:max-w-[75%] md:max-w-[70%]' : 'max-w-[50%]'} group ${isSender ? 'order-2' : ''}`}>
           {/* Message Bubble */}
           <div
-            className={`px-3 sm:px-4 py-2.5 rounded-2xl ${
+            className={`px-3 sm:px-4 py-2.5 rounded-2xl w-fit ${
               isSender
                 ? 'bg-gradient-to-r from-primary-500 to-secondary-500 text-white rounded-br-md'
                 : 'bg-dark-700/80 text-dark-100 border border-primary-500/20 rounded-bl-md'
@@ -242,9 +242,14 @@ export default function Message({ message, isSender }) {
               <span className={`text-[10px] ${isSender ? 'text-white/60' : 'text-dark-400'}`}>
                 {formatTime(message.timestamp)}
               </span>
-              {isSender && (
+              {isSender && !isGroupMessage && (
                 <span className="text-white/70">
                   {getStatusIcon()}
+                </span>
+              )}
+              {isSender && isGroupMessage && (
+                <span className="text-white/70">
+                  <Check className="w-3 h-3" />
                 </span>
               )}
             </div>
@@ -263,19 +268,19 @@ export default function Message({ message, isSender }) {
               <Check className="w-3 h-3 text-primary-400" />
               <span>Sent: {formatFullTime(message.timestamp)}</span>
             </div>
-            {message.status === 'DELIVERED' && !message.readTimestamp && (
+            {!isGroupMessage && message.status === 'DELIVERED' && !message.readTimestamp && (
               <div className="flex items-center gap-2">
                 <CheckCheck className="w-3 h-3 text-dark-300" />
                 <span>Delivered</span>
               </div>
             )}
-            {message.readTimestamp && (
+            {!isGroupMessage && message.readTimestamp && (
               <div className="flex items-center gap-2">
                 <CheckCheck className="w-3 h-3 text-blue-400" />
                 <span>Read: {formatFullTime(message.readTimestamp)}</span>
               </div>
             )}
-            {isSender && (
+            {isSender && !isGroupMessage && (
               <div className="mt-1.5 pt-1.5 border-t border-dark-600 text-dark-400">
                 Status: {getStatusText()}
               </div>
